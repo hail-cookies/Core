@@ -537,9 +537,9 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
      *
      * @return string
      */
-    protected function getMarkerPhpFunction() : string
+    protected function getMarkerPhpPlugin() : string
     {
-        return '@install\.';
+        return '@plugin\.';
     }
 
     /**
@@ -784,7 +784,7 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
     protected function getPhpMigrationScript(string $src) : ?string
     {
         $length=strlen($src);
-        $cut_down=stripos($src, $this->getMarkerPhpFunction());
+        $cut_down=stripos($src, $this->getMarkerPhpPlugin());
         if ($cut_down == FALSE)
         {
             return null; // no marker for PHP function call found, so return null
@@ -1039,7 +1039,7 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
     protected function isPluginCallContained(string $statement) : bool
     {
         $matches = [];
-        $found = preg_match($this->getMarkerPhpFunction(), $statement, $matches);
+        $found = preg_match($this->getMarkerPhpPlugin(), $statement, $matches);
         return $found && $matches[1] !== null;
     }
 
@@ -1052,7 +1052,7 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
     protected function isPlugin(string $statement) : bool
     {
         $matches = [];
-        $found = preg_match('/'.$this->getMarkerPhpFunction().'(?<fnc>(.|\s|\S)+?)/', $statement, $matches);
+        $found = preg_match('/'.$this->getMarkerPhpPlugin().'(?<fnc>(.|\s|\S)+?)/', $statement, $matches);
         return $found && $matches[1] !== null;
     }
 
@@ -1062,15 +1062,16 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
      * @param string $statement
      * @return void
      */
-    protected function runPlugin(string $statement)
+    protected function runPlugin(string $statement) : void
     {
         $matches = [];
-        $found = preg_match_all('/'.$this->getMarkerPhpFunction().'(?<fnc>[.|\s|\S]*?\))/', $statement, $matches);
+        $found = preg_match_all('/'.$this->getMarkerPhpPlugin().'(?<fnc>[.|\s|\S]*?\))/', $statement, $matches);
         if(!$found){
             return;
         }
         foreach ($matches['fnc'] as $match) {
-            $formula = FormulaFactory::createFromString($this->getWorkbench(), $match);
+            $script = preg_replace('/\n\s*/', '', $match);
+            $formula = FormulaFactory::createFromString($this->getWorkbench(), $script);
             $formula->evaluate();
         }
     }
