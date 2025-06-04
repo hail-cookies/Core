@@ -754,6 +754,9 @@ abstract class AbstractSqlBuilder extends AbstractQueryBuilder
                 // If the value is to be put into a JSON inside a column, store the prepared value in a separate
                 // array for later use and skip further processing for this value.
                 if ($columnIsJson === true) {
+                    if ($value === "''") {
+                        $value = null;
+                    }
                     $valuesForJsonCols[$row][$column][$jsonPath] = $value;
                     continue;
                 }
@@ -1105,6 +1108,10 @@ abstract class AbstractSqlBuilder extends AbstractQueryBuilder
                          */
                         // $cases[$qpart->getUids()[$row_nr]] = 'WHEN ' . $qpart->getUids()[$row_nr] . ' THEN ' . $value . "\n";
                         if($this->isJsonDataAddress($column)) {
+                            // Remove the JSON property if the value is empty!
+                            if ($value === "''" || $value === 'null') {
+                                $value = null;
+                            }
                             list($jsonColumn, $jsonPath) = $this->parseJsonDataAddress($column);
                             $jsonColumnsByUid[$qpart->getUids()[$row_nr]][$jsonColumn][$jsonPath] = $value;
                         } else {
