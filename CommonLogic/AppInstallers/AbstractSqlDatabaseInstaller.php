@@ -3,6 +3,7 @@
 namespace exface\Core\CommonLogic\AppInstallers;
 
 use exface\Core\Factories\FormulaFactory;
+use exface\Core\Formulas\AbstractSqlInstallerPlugin;
 use exface\Core\Interfaces\DataSources\SqlDataConnectorInterface;
 use exface\Core\CommonLogic\DataQueries\SqlDataQuery;
 use exface\Core\Interfaces\Selectors\DataSourceSelectorInterface;
@@ -550,7 +551,7 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
      * @return string
      */
     protected function getMarkerMultilineComment() : string{
-        return '\/\*|\*\/';
+        return '/\/\*|\*\//';
     }
     
     /**
@@ -1029,40 +1030,28 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
         $this->dataSourceSelector = $value;
         return $this;
     }
-    /**
-     * Returns an indicator if the statement provided as argument contains the marker interpreted as
-     * Plugin Call subjected by getMarkerPhpFunction().
-     *
-     * @param string $statement the statement to be checked
-     * @return bool TRUE if the value of getMarkerPhpFunction() is contained in $statement, otherwise FALSE
-     */
-    protected function isPluginCallContained(string $statement) : bool
-    {
-        $matches = [];
-        $found = preg_match($this->getMarkerPhpPlugin(), $statement, $matches);
-        return $found && $matches[1] !== null;
-    }
 
     /**
-     * Returns an indicator if the statement provided as argument is a Plugin Call.
+     * Returns an indicator if the statement provided as argument has a Plugin Call.
      *
      * @param string $statement the statement to be checked
-     * @return bool TRUE if $statement is a Plugin Call, otherwise FALSE
+     * @return bool TRUE if $statement has a Plugin Call, otherwise FALSE
      */
-    protected function isPlugin(string $statement) : bool
+    protected function hasPlugin(string $statement) : bool
     {
         $matches = [];
-        $found = preg_match('/'.$this->getMarkerPhpPlugin().'(?<fnc>(.|\s|\S)+?)/', $statement, $matches);
-        return $found && $matches[1] !== null;
+        $found = preg_match('/' . $this->getMarkerPhpPlugin() . '/', $statement, $matches);
+        return $found && $matches[0] !== null;
     }
 
     /**
      * Executes the Plugin Call.
      *
-     * @param string $statement
+     * @param SqlDataConnectorInterface $connector
+     * @param string                    $statement
      * @return void
      */
-    protected function runPlugin(string $statement) : void
+    protected function runPlugin(SqlDataConnectorInterface $connector, string $statement) : void
     {
         $matches = [];
         $found = preg_match_all('/'.$this->getMarkerPhpPlugin().'(?<fnc>[.|\s|\S]*?\))/', $statement, $matches);
@@ -1072,6 +1061,11 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
         foreach ($matches['fnc'] as $match) {
             $script = preg_replace('/\n\s*/', '', $match);
             $formula = FormulaFactory::createFromString($this->getWorkbench(), $script);
+            
+            if($formula instanceof AbstractSqlInstallerPlugin) {
+                $formula->setConnector($connector);
+            }
+            
             $formula->evaluate();
         }
     }
@@ -1091,13 +1085,16 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
             $mlDelim = '/' . preg_quote($mlDelim, '/') . '/';
         }
         foreach (preg_split($mlDelim, $script) as $mlStmt) {
-            if ($this->isPlugin($mlStmt)) {
-                $this->runPlugin($mlStmt);
+            if(empty(trim($mlStmt))) {
+                continue;
+            }
+            
+            if ($this->hasPlugin($mlStmt)) {
+                $this->runPlugin($connection, $mlStmt);
             } else {
-                $results[] = $connection->runSql($script, true);
+                $results[] = $connection->runSql($mlStmt, true);
             }
         }
         return $results;
     }
 }
-?>
