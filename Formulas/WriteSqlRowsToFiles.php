@@ -15,13 +15,13 @@ class WriteSqlRowsToFiles extends AbstractSqlInstallerPlugin
      * @inheritDoc
      */
     public function run(
-        string $select = null, 
+        string $selectStatement = null, 
         string $dataSourceAlias = null,
         string $filePathColumn = null,
         string $contentColumn = null,
         string $directorySeparator = '/')
     {
-        if( $select === null ||
+        if( $selectStatement === null ||
             $dataSourceAlias === null ||
             $filePathColumn === null ||
             $contentColumn === null ||
@@ -30,7 +30,7 @@ class WriteSqlRowsToFiles extends AbstractSqlInstallerPlugin
             return null;
         }
         
-        $selectResult = $this->getConnector()->runSql($select)->getResultArray();
+        $selectResult = $this->getConnector()->runSql($selectStatement)->getResultArray();
         $dataSource = DataSourceFactory::createFromModel($this->getWorkbench(), $dataSourceAlias);
         
         $pathArray = [];
@@ -85,7 +85,7 @@ class WriteSqlRowsToFiles extends AbstractSqlInstallerPlugin
             }
 
             $content = $contentArray[$i];
-            // See if empty content is feasable for the expected mime type!
+            // See if empty content is feasible for the expected mime type!
             // E.g. empty text files are OK, but an empty jpeg cannot be correct.
             if (empty($content)) {
                 $ext = FilePathDataType::findExtension($path);
