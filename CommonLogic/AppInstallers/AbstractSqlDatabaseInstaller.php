@@ -1054,7 +1054,7 @@ abstract class AbstractSqlDatabaseInstaller extends AbstractAppInstaller
     protected function runPlugin(SqlDataConnectorInterface $connector, string $statement) : void
     {
         $matches = [];
-        $found = preg_match_all('/'.$this->getMarkerPhpPlugin().'(?<fnc>[.|\s|\S]*?\))/', $statement, $matches);
+        $found = preg_match_all('/'.$this->getMarkerPhpPlugin().'(?<fnc>[.|\s|\S]*?\)(?=;))/', $statement, $matches);
         if(!$found){
             return;
         }
