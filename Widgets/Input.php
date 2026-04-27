@@ -1,6 +1,7 @@
 <?php
 namespace exface\Core\Widgets;
 
+use exface\Core\DataTypes\StringDataType;
 use exface\Core\Interfaces\Widgets\iTakeInput;
 use exface\Core\Exceptions\Model\MetaAttributeNotFoundError;
 use exface\Core\Interfaces\Widgets\iHaveDefaultValue;
@@ -89,6 +90,8 @@ class Input extends Value implements iTakeInput, iHaveDefaultValue
     private $disableValidation = false;
 
     private $ignore_default_value = null;
+    
+    private $validate_component_wise = null;
 
     /**
      * Input widgets are considered as required if they are explicitly marked as such or if the represent a meta attribute,
@@ -523,6 +526,38 @@ class Input extends Value implements iTakeInput, iHaveDefaultValue
     public function setMultipleValuesDelimiter(string $value) : Input
     {
         $this->multiValueDelimiter = $value;
+        return $this;
+    }
+
+
+    /**
+     * Returns TRUE if multiple values should be validated component-wise.
+     * 
+     * This setting only matters if `allow_multiple_values` is TRUE.
+     * 
+     * @return bool
+     */
+    public function getValidateComponentwise() : bool
+    {
+        // Setting is disabled by default EXCEPT for StringDataType.
+        return $this->validate_component_wise ??
+            !($this->getAttribute()?->getDataType() instanceof StringDataType);
+    }
+
+    /**
+     * Set to TRUE to validate multiple values component-wise instead of as one string.
+     * 
+     * This setting only matters if `allow_multiple_values` is TRUE.
+     * 
+     * @uxon-property validate_multiple_values_separate
+     * @uxon-type boolean
+     *
+     * @param bool $value
+     * @return Input
+     */
+    public function setValidateComponentwise(bool $value) : Input
+    {
+        $this->validate_component_wise = $value;
         return $this;
     }
     

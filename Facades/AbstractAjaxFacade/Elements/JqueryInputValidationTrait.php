@@ -115,11 +115,11 @@ JS;
         $formatter = $this->getFacade()->getDataTypeFormatter($type);
         if ($widget instanceof Input) {
             $typeValidationDisabled = $widget->getDisableValidation();
-            $multipleValuesAllowed = $widget->getMultipleValuesAllowed() === true;
+            $validateComponentWise = $widget->getValidateComponentwise();
             $hasAggregator = $widget->hasAggregator();
         } else {
             $typeValidationDisabled = false;
-            $multipleValuesAllowed = false;
+            $validateComponentWise = false;
             $hasAggregator = false;
         }
         $js = '';
@@ -128,7 +128,7 @@ JS;
         // part of the list - in particular to check string length for each value individually
         switch (true) {
             case $typeValidationDisabled === false && $hasAggregator === true:
-            case $typeValidationDisabled === false && ($type instanceof StringDataType) && $multipleValuesAllowed === true:
+            case $typeValidationDisabled === false && ($type instanceof StringDataType) && $validateComponentWise:
                 $partValidator = $formatter->buildJsValidator('part');
                 $js .= <<<JS
 
