@@ -10,6 +10,13 @@ use exface\Core\Interfaces\iCanGenerateDebugWidgets;
 use exface\Core\Interfaces\WorkbenchInterface;
 use exface\Core\Widgets\DebugMessage;
 
+/**
+ * Renders a debug widget UXON for a log context.
+ * 
+ * Provides several fallbacks if the regular rendering fails, so that the debug information is always available.
+ * 
+ * @author Georg Bieger
+ */
 class DebugWidgetRenderer
 {
     const KEY_EXCEPTION = 'exception';
