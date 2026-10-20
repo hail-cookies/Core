@@ -3,20 +3,33 @@
 namespace exface\Core\CommonLogic\Log\Processors;
 
 
-class RequestIdProcessor extends AbstractColumnPositionProcessor
+use exface\Core\CommonLogic\Workbench;
+
+/**
+ * Adds the requestId to the extra field of the log record.
+ * 
+ * @author Georg Bieger
+ */
+class RequestIdProcessor extends AbstractContextProcessor
 {
-    protected function getContentId()
-    {
-        return 'requestid';
-    }
+    const KEY_REQUEST_ID = 'requestId';
 
-    protected function getContent()
-    {
-        return $this->getWorkbench()->getContext()->getScopeRequest()->getScopeId();
-    }
+    private Workbench $workbench;
 
-    protected function getIndexColumns()
+    public function __construct(Workbench $workbench)
     {
-        return array('id');
+        $this->workbench = $workbench;
+    }
+    
+    /**
+     * @inheritDoc
+     */
+    protected function invokeInternal(array &$context, array &$extra): void
+    {
+        $this->setValue(
+            $extra,
+            self::KEY_REQUEST_ID,
+            $this->workbench->getContext()->getScopeRequest()->getScopeId()
+        );
     }
 }

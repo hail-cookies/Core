@@ -1,21 +1,21 @@
 <?php
 namespace exface\Core\CommonLogic\Log\Processors;
 
-class IdProcessor
+/**
+ * Moves the 'id' from context to extra.
+ * 
+ * @author Georg Bieger
+ */
+class IdProcessor extends AbstractContextProcessor
 {
+    const KEY_ID = 'id';
 
     /**
-     *
-     * @param array $record            
-     * @return array
+     * @inheritDoc
      */
-    public function __invoke(array $record)
+    protected function invokeInternal(array &$context, array &$extra): void
     {
-        $idArray = array(
-            'id' => $record['context']['id']
-        );
-        unset($record['context']['id']);
-        
-        return $idArray + $record;
+        $id = $this->extractValue($context, self::KEY_ID);
+        $this->setValue($extra, self::KEY_ID, $id);
     }
 }
