@@ -2,24 +2,33 @@
 
 namespace exface\Core\CommonLogic\Log\Processors;
 
+use exface\Core\CommonLogic\Workbench;
 
-class UserNameProcessor extends AbstractColumnPositionProcessor
+/**
+ * Adds the username to the extra field of the log record.
+ * 
+ * @author Georg Bieger
+ */
+class UserNameProcessor extends AbstractContextProcessor
 {
-    protected function getContentId()
-    {
-        return 'userName';
-    }
+    const KEY_USER_NAME = 'userName';
 
-    protected function getContent()
-    {
-        if ($this->getWorkbench()->isStarted()) {
-            return $this->getWorkbench()->getSecurity()->getAuthenticatedToken()->getUsername();
-        } 
-        return null;
-    }
+    private Workbench $workbench;
 
-    protected function getIndexColumns()
+    public function __construct(Workbench $workbench)
     {
-        return array('requestId', 'id');
+        $this->workbench = $workbench;
+    }
+    
+    /**
+     * @inheritDoc
+     */
+    protected function invokeInternal(array &$context, array &$extra) : void
+    {
+        $this->setValue(
+            $extra,
+            self::KEY_USER_NAME,
+            $this->workbench->getSecurity()->getAuthenticatedToken()->getUsername()
+        );
     }
 }
