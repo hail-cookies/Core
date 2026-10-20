@@ -255,6 +255,37 @@ CSV parsing: quoted commas and valid embedded newlines make it unreliable, so a 
 fields + identifiers + level + timestamp + JSON, back up/quarantine before rewriting, and report
 *logical record* numbers rather than physical line numbers.
 
+### 10. Composer scripts cannot boot a Monolog 3 workbench (release blocker)
+
+**What happens:** `composer update` succeeds, but the PackageManager post-update script fails with
+`Declaration of Monolog\Logger::emergency(...) must be compatible with Psr\Log\LoggerInterface::emergency($message, ...)`.
+
+**Why:** `composer.phar` bundles **psr/log 1.1.4** (every Composer version, incl. 2.2 LTS and 2.10)
+and loads it at startup. `axenox\PackageManager\StaticInstaller` boots the workbench **inside the
+Composer process**, so `Monolog\Logger` (psr/log 2/3 signatures) is checked against Composer's
+psr/log 1 interface and fails to compile. Any Monolog handler (`StreamHandler`,
+`FingersCrossedHandler`, …) loads `Monolog\Logger`, so the core port does **not** fix this.
+Pinning psr/log 2 does not help either. Verified: exface `Logger`, `Monolog\Level` and `LogRecord`
+load fine under psr/log 1; `StreamHandler`/`Monolog\Logger` do not.
+
+**Affected `StaticInstaller` entry points** (boot a workbench): `composerFinishUpdate`,
+`composerFinishInstall`, `composerPrepareUninstall`, `composerBackupEverything`. The package events
+(`composerFinishPackageInstall/Update`) only record aliases in `LastInstall.temp.json` and can stay
+in-process.
+
+**Fix (to be designed, not yet approved):** run those entry points in a **child PHP process**
+(`PHP_BINARY` + a small runner script in `axenox/packagemanager`), streaming output and
+propagating the exit code. A fresh process only sees `vendor`'s psr/log 3. Alternative: `@php …`
+commands in each installation's root `composer.json` (requires editing every installation).
+
+**Rollout:** the fixed PackageManager must be released and installed everywhere **before** the
+Monolog 3 core, because during a Composer run `StaticInstaller` may already be loaded from the old
+version.
+
+**Until fixed (dev):** run Composer with `--no-scripts`. Pending installers stay queued in
+`vendor\axenox\packagemanager\LastInstall.temp.json`; after the port, run them out of process:
+`php -r "require 'vendor/autoload.php'; axenox\PackageManager\StaticInstaller::composerFinishUpdate();"`.
+
 ## Latent risk: exFace handlers are appended without deduplication
 
 Handlers are **injected from outside** — the classes that need a sink construct a handler and push
@@ -478,3 +509,9 @@ Monolog 1 baseline are in `out\`.
 - [ ] Root `composer.json`: remove the `hail-cookies/Core.git` `vcs` repository.
 - [ ] `composer update exface/core` and confirm the lock points at `ExFace/Core` again.
 - [ ] Confirm no harness files or oracle outputs were committed.
+
+**PackageManager prerequisite (risk #10)**
+- [ ] Design and implement out-of-process `StaticInstaller` entry points in `axenox/packagemanager`.
+- [ ] Release PackageManager and roll it out to all installations before the Monolog 3 core.
+- [ ] Run the pending `exface.Core` installer in `exface-m3` (out of process) and verify it succeeds.
+- [ ] `composer update` **with scripts** in `exface-m3` completes without the psr/log fatal error.
