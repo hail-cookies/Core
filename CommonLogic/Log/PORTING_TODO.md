@@ -17,7 +17,7 @@ formatter (`COLUMNS`), not by the processors.
 - [x] `DebugWidgetProcessor` — port to `LogRecord`; extract standalone detail-JSON generator for `MonitorLogHandler`
 - [x] Remove `AbstractColumnPositionProcessor` once no subclass uses it
 - [x] Use the processors' `KEY` constants in `CsvLogConfig::VERSIONS` columns
-- [ ] CSV formatter: strip all column keys from the column-10 `extra` JSON
+- [x] CSV formatter: strip all column keys from the column-10 `extra` JSON
 - [ ] **Timing:** processors on the inner CSV handler run at `FingersCrossedHandler` *flush* time, not log
   time. Buffered entries therefore get the user/action current at flush. Decide whether to push
   `UserNameProcessor`/`ActionAliasProcessor` (and `RequestIdProcessor`) onto the `FingersCrossedHandler`
@@ -51,3 +51,24 @@ addresses columns by **name**; the query builder translates names to positions p
   For `<date>.v2.log` that yields `<date>.v2` instead of `<date>` → expired v2 detail folders are never
   deleted. Strip the version suffix (shared helper in `CsvLogConfig`)
 - [ ] Test: mixed v1 + current-version files render correctly, incl. filtering and sorting
+
+## Row integrity
+
+`CsvFormatter` already sanitizes every field (invalid UTF-8 → U+FFFD, failed JSON → placeholder), so a
+malformed value never drops a row. The following checks are still open:
+
+- [x] **Round-trip check in `CsvHandler`:** build the line via `fputcsv` into `php://memory`, parse it back
+  with `str_getcsv()` using delimiter/enclosure/escape from `CsvLogConfig`, and compare against the
+  formatted row. On mismatch, write a fallback row (id, datetime, level, `[row encoding failed]`).
+- [x] **Locking in `CsvHandler`:** `useLocking` defaults to `true`; each line is written with one `fwrite`
+  under `LOCK_EX`; the lock is released even if writing throws.
+- [ ] **Escape char:** values ending in a backslash (`\`) currently fail the round-trip with escape `\\` and
+  end up as fallback rows. Decide on `''` as escape for the next version (see TODO in `CsvLogConfig`) and
+  remove the `str_replace('\\', '\\\\')` workaround in `MonologCsvFileHandler`.
+- [ ] **Readers:** `LogCsvBuilder` / `LogCleaner` should take `LOCK_SH` while reading, or ignore a trailing
+  line without line ending.
+- [ ] **Batches (optional):** override `CsvHandler::handleBatch()` to write a `FingersCrossedHandler` flush as
+  one contiguous block under a single lock.
+- [ ] **Checksum column (optional):** add a `crc32` of the remaining fields as a new column (requires a new
+  version in `CsvLogConfig`). Lets `LogCsvBuilder` / `LogCleaner` detect truncated, interleaved or manually
+  edited rows at read time. Only needed if `LogCleaner` should detect corruption beyond field count.
