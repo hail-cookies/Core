@@ -1,6 +1,8 @@
 <?php
 namespace exface\Core\CommonLogic\Log\Processors;
 
+use exface\core\CommonLogic\Log\CsvLogConfig;
+
 /**
  * Moves the 'id' from context to extra.
  * 
@@ -8,7 +10,7 @@ namespace exface\Core\CommonLogic\Log\Processors;
  */
 class IdProcessor extends AbstractContextProcessor
 {
-    const KEY_ID = 'id';
+    const KEY_ID = CsvLogConfig::KEY_ID;
 
     /**
      * @inheritDoc

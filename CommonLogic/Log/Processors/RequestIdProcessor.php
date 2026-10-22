@@ -3,6 +3,7 @@
 namespace exface\Core\CommonLogic\Log\Processors;
 
 
+use exface\core\CommonLogic\Log\CsvLogConfig;
 use exface\Core\CommonLogic\Workbench;
 
 /**
@@ -12,7 +13,7 @@ use exface\Core\CommonLogic\Workbench;
  */
 class RequestIdProcessor extends AbstractContextProcessor
 {
-    const KEY_REQUEST_ID = 'requestId';
+    const KEY_REQUEST_ID = CsvLogConfig::KEY_REQUEST_ID;
 
     private Workbench $workbench;
 

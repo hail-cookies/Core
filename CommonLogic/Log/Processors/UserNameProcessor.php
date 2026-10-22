@@ -2,6 +2,7 @@
 
 namespace exface\Core\CommonLogic\Log\Processors;
 
+use exface\core\CommonLogic\Log\CsvLogConfig;
 use exface\Core\CommonLogic\Workbench;
 
 /**
@@ -11,7 +12,7 @@ use exface\Core\CommonLogic\Workbench;
  */
 class UserNameProcessor extends AbstractContextProcessor
 {
-    const KEY_USER_NAME = 'userName';
+    const KEY_USER_NAME = CsvLogConfig::KEY_USER_NAME;
 
     private Workbench $workbench;
 

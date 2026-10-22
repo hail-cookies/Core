@@ -3,6 +3,7 @@
 namespace exface\Core\CommonLogic\Log\Processors;
 
 
+use exface\core\CommonLogic\Log\CsvLogConfig;
 use exface\Core\CommonLogic\Workbench;
 use exface\Core\Interfaces\Actions\ActionInterface;
 
@@ -13,7 +14,7 @@ use exface\Core\Interfaces\Actions\ActionInterface;
  */
 class ActionAliasProcessor extends AbstractContextProcessor
 {
-    const KEY_ACTION_ALIAS = 'actionAlias';
+    const KEY_ACTION_ALIAS = CsvLogConfig::KEY_ACTION_ALIAS;
     
     private Workbench $workbench;
 

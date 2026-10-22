@@ -64,52 +64,72 @@ use InvalidArgumentException;
  * 
  * @see \exface\Core\QueryBuilders\LogCsvBuilder for the version-aware reader
  * @see \exface\Core\CommonLogic\Log\LogCleaner for per-version validation and repair
+ * 
+ * @author Georg Bieger
  */
 final class CsvLogConfig
 {
     const LEGACY_VERSION = '';
-    const CURRENT_VERSION = 'v1';
+    const CURRENT_VERSION = 'temp';
+    
+    const KEY_ID = 'id';
+    const KEY_REQUEST_ID = 'requestId';
+    const KEY_USER_NAME = 'userName';
+    const KEY_ACTION_ALIAS = 'actionAlias';
+    const KEY_MESSAGE = 'message'; //*
+    const KEY_CONTEXT = 'context';
+    const KEY_LEVEL = 'level'; //*
+    const KEY_LEVEL_NAME = 'level_name';
+    const KEY_CHANNEL = 'channel';
+    const KEY_DATETIME = 'datetime'; //*
+    const KEY_EXTRA = 'extra'; //*
+    
+    const PRP_COLUMNS = 'columns';
+    const PRP_DELIMITER = 'delimiter';
+    const PRP_ENCLOSURE = 'enclosure';
+    const PRP_ESCAPE = 'escape';
+    const PRP_DATE_FORMAT = 'date_format';
 
     // DO NOT MODIFY existing entries, because they are already in use.
     // Append newer versions at the end of this array to allow proper version comparison.
     const VERSIONS = [
         self::LEGACY_VERSION => [ // legacy log files without version key
-            'columns' => [ // will be written to the CSV file in this order
+            self::PRP_COLUMNS => [ // will be written to the CSV file in this order
                 IdProcessor::KEY_ID,
                 RequestIdProcessor::KEY_REQUEST_ID,
                 UserNameProcessor::KEY_USER_NAME,
                 ActionAliasProcessor::KEY_ACTION_ALIAS,
-                'message',
-                'context',
-                'level',
-                'level_name',
-                'channel',
-                'datetime',
-                'extra'
+                self::KEY_MESSAGE,
+                self::KEY_CONTEXT,
+                self::KEY_LEVEL,
+                self::KEY_LEVEL_NAME,
+                self::KEY_CHANNEL,
+                self::KEY_DATETIME,
+                self::KEY_EXTRA
             ],
-            'delimiter' => ',',
-            'enclosure' => '\'',
-            'escape' => '\\',
-            'date_format' => 'Y-m-d H:i:s.v'
+            self::PRP_DELIMITER => ',',
+            self::PRP_ENCLOSURE => '\'',
+            self::PRP_ESCAPE => '\\',
+            self::PRP_DATE_FORMAT => 'Y-m-d H:i:s.v'
         ],
-        'v1' => [
-            'columns' => [ // will be written to the CSV file in this order
+        'temp' => [
+            self::PRP_COLUMNS => [ // will be written to the CSV file in this order
                 IdProcessor::KEY_ID,
                 RequestIdProcessor::KEY_REQUEST_ID,
                 UserNameProcessor::KEY_USER_NAME,
                 ActionAliasProcessor::KEY_ACTION_ALIAS,
-                'message',
-                'context',
-                'level',
-                'level_name',
-                'channel',
-                'datetime',
-                'extra'
+                self::KEY_MESSAGE,
+                self::KEY_CONTEXT,
+                self::KEY_LEVEL,
+                self::KEY_LEVEL_NAME,
+                self::KEY_CHANNEL,
+                self::KEY_DATETIME,
+                self::KEY_EXTRA
             ],
-            'delimiter' => ',',
-            'enclosure' => '\'',
-            'escape' => '\\', // TODO: test double quote or empty string for better compatibility with Excel and other CSV readers
-            'date_format' => 'Y-m-d H:i:s.v'
+            self::PRP_DELIMITER => ',',
+            self::PRP_ENCLOSURE => '\'',
+            self::PRP_ESCAPE => '\\', // TODO: test double quote or empty string for better compatibility with Excel and other CSV readers
+            self::PRP_DATE_FORMAT => 'Y-m-d H:i:s.v'
         ],
     ];
 
@@ -123,7 +143,7 @@ final class CsvLogConfig
     public static function getColumns(string $version = self::CURRENT_VERSION) : array
     {
         self::assertVersionExists($version, 'version');
-        return self::VERSIONS[$version]['columns'];
+        return self::VERSIONS[$version][self::PRP_COLUMNS];
     }
 
     /**
@@ -136,7 +156,7 @@ final class CsvLogConfig
     public static function getDelimiter(string $version = self::CURRENT_VERSION) : string
     {
         self::assertVersionExists($version, 'version');
-        return self::VERSIONS[$version]['delimiter'];
+        return self::VERSIONS[$version][self::PRP_DELIMITER];
     }
     
     /**
@@ -149,7 +169,7 @@ final class CsvLogConfig
     public static function getEnclosure(string $version = self::CURRENT_VERSION) : string
     {
         self::assertVersionExists($version, 'version');
-        return self::VERSIONS[$version]['enclosure'];
+        return self::VERSIONS[$version][self::PRP_ENCLOSURE];
     }
     
     /**
@@ -162,7 +182,7 @@ final class CsvLogConfig
     public static function getEscape(string $version = self::CURRENT_VERSION) : string
     {
         self::assertVersionExists($version, 'version');
-        return self::VERSIONS[$version]['escape'];
+        return self::VERSIONS[$version][self::PRP_ESCAPE];
     }
 
     /**
@@ -175,7 +195,7 @@ final class CsvLogConfig
     public static function getDateFormat(string $version = self::CURRENT_VERSION) : string
     {
         self::assertVersionExists($version, 'version');
-        return self::VERSIONS[$version]['date_format'];
+        return self::VERSIONS[$version][self::PRP_DATE_FORMAT];
     }
 
     // Generated by GitHub Copilot - Oct-20-2026
