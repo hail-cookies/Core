@@ -92,6 +92,10 @@ UI loads `log/details/<date>/<log-id>.json` using the log ID found in a CSV row.
     of apostrophes/backslashes/commas/newlines proves reader compatibility. If it does not, keep the
     legacy backslash escape and document/test that mode. The escape choice must be proven against
     `CsvBuilder`, never assumed.
+    **Status:** deferred until the version-aware reader (`LogCsvBuilder`) exists — the escape char is a
+    per-version setting in `CsvLogConfig`, and the proof needs the reader that will actually consume
+    new-version files. Until then the writer keeps `\`; values that cannot round-trip with it (e.g. ending
+    in a backslash) are written as fallback rows. Tracked in `PORTING_TODO.md`.
 
 **Column order (physical, 0-indexed).** The first ten columns are mapped by `exface.Core.LOG_ENTRY`;
 column 10 is retained for compatibility even though it is not modeled. This order is produced today by
@@ -429,11 +433,15 @@ writer, escape strategy to be proven against `CsvBuilder`.
 2. **Platform & Composer.** Raise `php` to `^8.1`; require `monolog/monolog:^3.12` + compatible PSR
    Log; remove `femtopixel/monolog-csvhandler`. Resolve with `composer why-not` first; review the
    full lock diff.
-3. **First-party CSV writer + formatter** (`CommonLogic/Log/Monolog`). Emit the exact 11 columns
-   explicitly — never a generic `LogRecord::toArray()`. Convert `Level` to numeric + uppercase name,
-   format the timestamp explicitly, JSON-encode context/extra with throw-on-failure, strip
-   `exception`/`sender` from the CSV context only. Enable **exclusive stream locking** per record;
-   treat short/failed writes as exceptions.
+3. **First-party CSV writer + formatter** (`Monolog/CsvFormatter`, `Handlers/CsvHandler`). Emit the exact
+   11 columns explicitly — never a generic `LogRecord::toArray()`. Convert `Level` to numeric + uppercase
+   name, format the timestamp explicitly, JSON-encode context/extra, strip `exception`/`sender` from the
+   CSV context only. **Sanitize instead of throw (decided during implementation):** invalid UTF-8 is
+   replaced with U+FFFD and unencodable JSON with a placeholder, so a single malformed value never costs
+   the whole row. The handler verifies each line by parsing it back with the `CsvLogConfig` settings and
+   writes a fallback row (`[row encoding failed]`, logger-generated columns only) if the round-trip or
+   the column layout does not match; only if even that fails is the entry skipped and reported via
+   `error_log`. Enable **exclusive stream locking** per record; treat short/failed writes as exceptions.
 4. **Atomic detail persistence + ordering.** Port `DebugMessageMonologHandler` to v3; write detail
    JSON to a temp file → validate with `JSON_THROW_ON_ERROR` → atomic rename, exclusive create. Wire a
    core-owned **composite handler** that persists/confirms the detail file **before** appending the
@@ -457,11 +465,11 @@ writer, escape strategy to be proven against `CsvBuilder`.
 
 | Area | Must verify |
 |---|---|
-| CSV round-trip | All adversarial values decode via `CsvBuilder` to exactly 11 fields in documented order; level numeric+name, timestamp format, valid context/extra JSON. |
+| CSV round-trip | All adversarial values decode via `CsvBuilder` to exactly 11 fields in documented order; level numeric+name, timestamp format, valid context/extra JSON. Values the writer cannot round-trip produce a fallback row, never a broken line. |
 | Detail files | Every row's log ID resolves to valid `details/<date>/<id>.json`; renders in the existing dialog; `exception`/`sender` excluded from CSV but present in details. |
 | Buffering | Below-min dropped; collected-but-untriggered stays buffered; `PERSIST` flushes the buffer incl. trigger; `PASSTHROUGH` persists independently and exactly once; normal + exception-driven shutdown. |
 | Concurrency | Multi-worker same-file writes: no missing/dup/truncated/interleaved rows, unique IDs, valid matching details; repeated to force contention. Same-ID detail writes never mutate an existing file. |
-| Failure/interruption | Unwritable dir, detail/CSV write failure, malformed UTF-8/JSON, init failure, termination between temp-detail and publish → reach `error_log` fallback, never publish a dangling CSV row. |
+| Failure/interruption | Malformed UTF-8/JSON → sanitized row is written (U+FFFD / placeholder), not dropped. Unwritable dir, detail/CSV write failure, init failure, termination between temp-detail and publish → reach `error_log` fallback, never publish a dangling CSV row. |
 | UI / old files / repair / retention | Log viewer filters/sorts modeled columns + opens details for ordinary/exception/fallback entries; pre-upgrade files still readable; repair preserves valid multiline records + quarantines; cleanup removes only expired data. |
 
 **Acceptance gate:** Composer resolves Monolog 3.12.x without FemtoPixel or ignored platform reqs;
@@ -485,33 +493,3 @@ suite — reuse Behat where a scenario fits and retain a documented manual verif
 No `exface.Core.LOG_ENTRY` metamodel change is expected. If validation proves its current
 enclosure/escape cannot safely represent the required values, any format change must be a **separate**
 backward-compatible migration with dual-read support — not folded silently into the Monolog upgrade.
-
-## Testing and Cleanup
-
-Finalization checklist. The baseline oracle harness (step 1) lives outside the repo, in the
-Copilot session folder `files\oracle\` (copy it somewhere permanent if needed). Results from the
-Monolog 1 baseline are in `out\`.
-
-**Verify against the oracle**
-- [ ] `corpus.php`: all 41 baseline-OK cases decode to the same values as `out\corpus\oracle.json`
-      (compare decoded fields; ignore request ID, user, action and timestamp values).
-- [ ] `corpus.php`: the 5 baseline-BROKEN cases now pass (`bslash_apos`, `bslash_apos_end`,
-      `ctx_bad_utf8`, `ctx_bslash_apos`, `win_path_quoted`).
-- [ ] Decide and document whether message backslash doubling (`handle()`) is kept.
-- [ ] `stress.php` (8×300 ×3, 16×300 ×2): 0 missing, corrupted or unattributed rows
-      (baseline lost ~1.8%).
-- [ ] `stress.php` with kill (1 worker, several delays): no CSV row without a valid detail JSON.
-- [ ] `repair_sim.php` / new repair on `corpus.log`: no valid multi-line record destroyed.
-- [ ] Remaining test matrix rows and acceptance gate above checked; unverified items marked as such.
-
-**Remove temporary re-routes**
-- [ ] Root `composer.json`: set `exface/core` back to `dev-1.x-dev as 1.0`.
-- [ ] Root `composer.json`: remove the `hail-cookies/Core.git` `vcs` repository.
-- [ ] `composer update exface/core` and confirm the lock points at `ExFace/Core` again.
-- [ ] Confirm no harness files or oracle outputs were committed.
-
-**PackageManager prerequisite (risk #10)**
-- [ ] Design and implement out-of-process `StaticInstaller` entry points in `axenox/packagemanager`.
-- [ ] Release PackageManager and roll it out to all installations before the Monolog 3 core.
-- [ ] Run the pending `exface.Core` installer in `exface-m3` (out of process) and verify it succeeds.
-- [ ] `composer update` **with scripts** in `exface-m3` completes without the psr/log fatal error.

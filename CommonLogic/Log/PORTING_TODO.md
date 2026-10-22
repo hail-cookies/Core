@@ -54,17 +54,22 @@ addresses columns by **name**; the query builder translates names to positions p
 
 ## Row integrity
 
-`CsvFormatter` already sanitizes every field (invalid UTF-8 → U+FFFD, failed JSON → placeholder), so a
-malformed value never drops a row. The following checks are still open:
+`CsvFormatter` sanitizes every field (invalid UTF-8 → U+FFFD, failed JSON → placeholder), so a
+malformed value never drops a row. **Decision:** sanitize instead of throw-on-failure — this replaces the
+original plan (step 3 in `MONOLOG_MIGRATION.md` is updated accordingly).
 
+- [x] **Sanitizing in `CsvFormatter`** instead of `JSON_THROW_ON_ERROR`.
 - [x] **Round-trip check in `CsvHandler`:** build the line via `fputcsv` into `php://memory`, parse it back
   with `str_getcsv()` using delimiter/enclosure/escape from `CsvLogConfig`, and compare against the
   formatted row. On mismatch, write a fallback row (id, datetime, level, `[row encoding failed]`).
 - [x] **Locking in `CsvHandler`:** `useLocking` defaults to `true`; each line is written with one `fwrite`
   under `LOCK_EX`; the lock is released even if writing throws.
-- [ ] **Escape char:** values ending in a backslash (`\`) currently fail the round-trip with escape `\\` and
-  end up as fallback rows. Decide on `''` as escape for the next version (see TODO in `CsvLogConfig`) and
-  remove the `str_replace('\\', '\\\\')` workaround in `MonologCsvFileHandler`.
+- [ ] **Decide the escape char** (blocked until `LogCsvBuilder` exists): the escape strategy in
+  `MONOLOG_MIGRATION.md` must be proven against the reader that consumes new-version files, so it cannot
+  be decided before the version-aware reader is ported. Candidate: `''` (no escape, enclosure doubling).
+  With the current `\`, values ending in a backslash fail the round-trip and become fallback rows. Once
+  decided: set `PRP_ESCAPE` for the current version in `CsvLogConfig` (resolves the TODO there) and remove
+  the `str_replace('\\', '\\\\')` workaround in `MonologCsvFileHandler`, if no longer needed.
 - [ ] **Readers:** `LogCsvBuilder` / `LogCleaner` should take `LOCK_SH` while reading, or ignore a trailing
   line without line ending.
 - [ ] **Batches (optional):** override `CsvHandler::handleBatch()` to write a `FingersCrossedHandler` flush as
@@ -72,3 +77,34 @@ malformed value never drops a row. The following checks are still open:
 - [ ] **Checksum column (optional):** add a `crc32` of the remaining fields as a new column (requires a new
   version in `CsvLogConfig`). Lets `LogCsvBuilder` / `LogCleaner` detect truncated, interleaved or manually
   edited rows at read time. Only needed if `LogCleaner` should detect corruption beyond field count.
+
+## Testing and Cleanup
+
+Finalization checklist. The baseline oracle harness (step 1 in `MONOLOG_MIGRATION.md`) lives outside the repo, in the
+Copilot session folder `files\oracle\` (copy it somewhere permanent if needed). Results from the
+Monolog 1 baseline are in `out\`.
+
+**Verify against the oracle**
+- [ ] `corpus.php`: all 41 baseline-OK cases decode to the same values as `out\corpus\oracle.json`
+      (compare decoded fields; ignore request ID, user, action and timestamp values).
+- [ ] `corpus.php`: the 5 baseline-BROKEN cases now pass (`bslash_apos`, `bslash_apos_end`,
+      `ctx_bad_utf8`, `ctx_bslash_apos`, `win_path_quoted`). Depends on the escape char decision; with
+      `\` the backslash cases are expected to become fallback rows instead.
+- [ ] Decide and document whether message backslash doubling (`handle()`) is kept.
+- [ ] `stress.php` (8×300 ×3, 16×300 ×2): 0 missing, corrupted or unattributed rows
+      (baseline lost ~1.8%).
+- [ ] `stress.php` with kill (1 worker, several delays): no CSV row without a valid detail JSON.
+- [ ] `repair_sim.php` / new repair on `corpus.log`: no valid multi-line record destroyed.
+- [ ] Remaining test matrix rows and acceptance gate in `MONOLOG_MIGRATION.md` checked; unverified items marked as such.
+
+**Remove temporary re-routes**
+- [ ] Root `composer.json`: set `exface/core` back to `dev-1.x-dev as 1.0`.
+- [ ] Root `composer.json`: remove the `hail-cookies/Core.git` `vcs` repository.
+- [ ] `composer update exface/core` and confirm the lock points at `ExFace/Core` again.
+- [ ] Confirm no harness files or oracle outputs were committed.
+
+**PackageManager prerequisite (risk #10)**
+- [ ] Design and implement out-of-process `StaticInstaller` entry points in `axenox/packagemanager`.
+- [ ] Release PackageManager and roll it out to all installations before the Monolog 3 core.
+- [ ] Run the pending `exface.Core` installer in `exface-m3` (out of process) and verify it succeeds.
+- [ ] `composer update` **with scripts** in `exface-m3` completes without the psr/log fatal error.
