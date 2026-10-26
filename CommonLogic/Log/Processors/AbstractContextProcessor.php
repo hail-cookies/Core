@@ -1,6 +1,6 @@
 <?php
 
-namespace exface\core\CommonLogic\Log\Processors;
+namespace exface\Core\CommonLogic\Log\Processors;
 
 use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;

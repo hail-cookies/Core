@@ -1,9 +1,9 @@
 <?php
 
-namespace exface\core\CommonLogic\Log\Handlers;
+namespace exface\Core\CommonLogic\Log\Handlers;
 
-use exface\core\CommonLogic\Log\CsvLogConfig;
-use exface\core\CommonLogic\Log\Monolog\CsvFormatter;
+use exface\Core\CommonLogic\Log\CsvLogConfig;
+use exface\Core\CommonLogic\Log\Monolog\CsvFormatter;
 use Monolog\Formatter\FormatterInterface;
 use Monolog\Handler\HandlerInterface;
 use Monolog\Handler\StreamHandler;
@@ -14,7 +14,7 @@ use InvalidArgumentException;
 /**
  * Stores to a csv file
  *
- * Can be used to store big loads to physical files and import them later into another system that can handle CSV
+ * Can be used to store large data volumes to physical files and import them later into another system that can handle CSV.
  * 
  * Every record is written as one complete line:
  * - Rows must be produced by `CsvFormatter` (enforced in `setFormatter()`), which defines the column layout

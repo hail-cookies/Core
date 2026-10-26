@@ -1,10 +1,10 @@
 <?php
 namespace exface\Core\CommonLogic\Log\Processors;
 
-use exface\core\CommonLogic\Log\CsvLogConfig;
+use exface\Core\CommonLogic\Log\CsvLogConfig;
 
 /**
- * Moves the 'id' from context to extra.
+ * Moves the property 'id' from context to extra.
  * 
  * @author Georg Bieger
  */

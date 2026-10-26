@@ -1,6 +1,6 @@
 <?php
 
-namespace exface\core\CommonLogic\Log;
+namespace exface\Core\CommonLogic\Log;
 
 use exface\Core\CommonLogic\Log\Processors\ActionAliasProcessor;
 use exface\Core\CommonLogic\Log\Processors\IdProcessor;

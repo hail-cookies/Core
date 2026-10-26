@@ -1,8 +1,8 @@
 <?php
 
-namespace exface\core\CommonLogic\Log\Monolog;
+namespace exface\Core\CommonLogic\Log\Monolog;
 
-use exface\core\CommonLogic\Log\CsvLogConfig;
+use exface\Core\CommonLogic\Log\CsvLogConfig;
 use Monolog\Formatter\NormalizerFormatter;
 use Monolog\LogRecord;
 

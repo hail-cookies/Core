@@ -2,8 +2,8 @@
 
 namespace exface\Core\CommonLogic\Log\Processors;
 
-use exface\core\CommonLogic\Log\CsvLogConfig;
-use exface\Core\CommonLogic\Workbench;
+use exface\Core\CommonLogic\Log\CsvLogConfig;
+use exface\Core\Interfaces\WorkbenchInterface;
 
 /**
  * Adds the username to the extra field of the log record.
@@ -14,9 +14,9 @@ class UserNameProcessor extends AbstractContextProcessor
 {
     const KEY_USER_NAME = CsvLogConfig::KEY_USER_NAME;
 
-    private Workbench $workbench;
+    private WorkbenchInterface $workbench;
 
-    public function __construct(Workbench $workbench)
+    public function __construct(WorkbenchInterface $workbench)
     {
         $this->workbench = $workbench;
     }
