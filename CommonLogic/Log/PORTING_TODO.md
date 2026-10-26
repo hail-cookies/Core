@@ -18,10 +18,21 @@ formatter (`COLUMNS`), not by the processors.
 - [x] Remove `AbstractColumnPositionProcessor` once no subclass uses it
 - [x] Use the processors' `KEY` constants in `CsvLogConfig::VERSIONS` columns
 - [x] CSV formatter: strip all column keys from the column-10 `extra` JSON
-- [ ] **Timing:** processors on the inner CSV handler run at `FingersCrossedHandler` *flush* time, not log
+- [x] **Timing:** processors on the inner CSV handler run at `FingersCrossedHandler` *flush* time, not log
   time. Buffered entries therefore get the user/action current at flush. Decide whether to push
   `UserNameProcessor`/`ActionAliasProcessor` (and `RequestIdProcessor`) onto the `FingersCrossedHandler`
   to capture log-time values. Pre-existing behaviour — document the decision either way.
+  **Decision:** context processors run on the `FingersCrossedHandler` (log time); `ContextFilterProcessor`
+  stays on the `CsvHandler` (flush time). See "Processor timing" in `MONOLOG_MIGRATION.md`.
+- [ ] **Log-time processors must be cheap and never throw** (consequence of the timing decision): they now
+  run for every collected record, including those discarded without a trigger, and an exception escapes
+  from `Logger::log()`.
+  - [ ] `UserNameProcessor`: restore the Monolog 1 `isStarted()` guard and catch `\Throwable` (the port
+    dropped the guard, so logging before the workbench/security is initialized throws).
+  - [ ] `RequestIdProcessor`: same guard; `getContext()` is unsafe before the workbench is started.
+  - [ ] Optional — reduce per-record cost: cache user name and action alias per request and refresh them on
+    workbench events (authentication, action start/end) instead of resolving them for every record.
+    Measure first; only worth it if profiling shows the lookups matter for debug-heavy requests.
 
 ## Version-aware reader (`LogCsvBuilder`)
 

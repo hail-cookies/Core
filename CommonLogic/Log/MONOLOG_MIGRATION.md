@@ -65,6 +65,25 @@ They treat the record as an **ordered array and reorder keys via `array_slice`**
 columns in the CSV. This is the most fragile area — in v3 records are immutable `LogRecord`
 objects, so this reordering approach needs a rethink.
 
+### Processor timing (decided during the port)
+
+Where a processor is pushed decides *when* it runs. With buffering (`FingersCrossedHandler`), processors
+on the inner handlers only run when the buffer is flushed — possibly long after the message was logged.
+
+| Processor | Pushed onto | Runs at | Why |
+|---|---|---|---|
+| `IdProcessor`, `RequestIdProcessor`, `UserNameProcessor`, `ActionAliasProcessor` | `FingersCrossedHandler` (buffered) / `CsvHandler` (unbuffered) | log time | Values describe the moment of logging. In Monolog 1 they ran at flush, so buffered rows got the user/action current at flush (behaviour change, intended). |
+| `ContextFilterProcessor` (`exception`, `sender`) | `CsvHandler` only | flush time | The `DebugMessageMonologHandler` in the same group still needs `sender`/`exception`. Filtering earlier silently drops all debug widgets. |
+| `IdProcessor` (second instance) | `DebugMessageMonologHandler` | flush time | Idempotent; only needed when the handler is used without the shared processors. |
+
+Consequences:
+- The log-time processors run for **every** collected record, including those discarded unless a
+  trigger arrives. They must be cheap and must **never throw** — an exception escapes from `log()`.
+  Tracked in `PORTING_TODO.md`.
+- Buffered records keep references to `sender`/`exception` until flushed or discarded at the end of the
+  request (same as Monolog 1).
+- If no details directory is configured, `MonologCsvFileHandler` writes the CSV log only.
+
 ## Housekeeping (no Monolog dependency)
 
 `CommonLogic/Log/LogCleaner.php` — cron-driven cleanup of expired `.log` / `.json` / trace files,
