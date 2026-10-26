@@ -27,10 +27,22 @@ class RequestIdProcessor extends AbstractContextProcessor
      */
     protected function invokeInternal(array &$context, array &$extra): void
     {
+        // Make sure the workbench is started.
+        if($this->workbench->isStarted()) {
+            try {
+                $value = $this->workbench->getContext()->getScopeRequest()->getScopeId();
+            } catch (\Throwable $e) {
+                $value = null;
+            }
+        } else {
+            // If the workbench is not started, getting the request ID would throw, so we set it to NULL instead.
+            $value = null;
+        }
+        
         $this->setValue(
             $extra,
             self::KEY_REQUEST_ID,
-            $this->workbench->getContext()->getScopeRequest()->getScopeId()
+            $value
         );
     }
 }

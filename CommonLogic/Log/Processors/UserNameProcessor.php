@@ -26,10 +26,23 @@ class UserNameProcessor extends AbstractContextProcessor
      */
     protected function invokeInternal(array &$context, array &$extra) : void
     {
+        // Make sure the workbench is started.
+        if($this->workbench->isStarted()) {
+            try {
+                // Must not trigger authentication (remember-me, events, recursive logging) from within the logger.
+                $value = $this->workbench->getSecurity()->getAuthenticatedTokenIfExists()?->getUsername();
+            } catch (\Throwable $e) {
+                $value = null;
+            }
+        } else {
+            // If the workbench is not started, getting the username would throw, so we set it to NULL instead.
+            $value = null;
+        }
+        
         $this->setValue(
             $extra,
             self::KEY_USER_NAME,
-            $this->workbench->getSecurity()->getAuthenticatedToken()->getUsername()
+            $value
         );
     }
 }

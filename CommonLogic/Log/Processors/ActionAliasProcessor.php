@@ -31,6 +31,7 @@ class ActionAliasProcessor extends AbstractContextProcessor
         if (! $this->workbench->isStarted()) {
             return null;
         }
+        
         try {
             return $this->workbench
                 ->getContext()
