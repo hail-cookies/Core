@@ -27,9 +27,16 @@ formatter (`COLUMNS`), not by the processors.
 - [ ] **Log-time processors must be cheap and never throw** (consequence of the timing decision): they now
   run for every collected record, including those discarded without a trigger, and an exception escapes
   from `Logger::log()`.
-  - [ ] `UserNameProcessor`: restore the Monolog 1 `isStarted()` guard and catch `\Throwable` (the port
+  - [x] `UserNameProcessor`: restore the Monolog 1 `isStarted()` guard and catch `\Throwable` (the port
     dropped the guard, so logging before the workbench/security is initialized throws).
-  - [ ] `RequestIdProcessor`: same guard; `getContext()` is unsafe before the workbench is started.
+  - [x] `RequestIdProcessor`: same guard; `getContext()` is unsafe before the workbench is started.
+  - [x] `UserNameProcessor` can trigger authentication: if no token exists yet,
+    `SecurityManager::getAuthenticatedToken()` lazily authenticates (remember-me), which may fire events and
+    log recursively. Pre-existing in Monolog 1, but now happens at log time instead of flush. Fix: add a
+    side-effect-free accessor (e.g. return the current token or NULL without authenticating) to the
+    security manager and use it in the processor.
+    **Done:** `SecurityManagerInterface::getAuthenticatedTokenIfExists()`. Records logged before the first
+    authentication of a request now have an empty user name instead of the remembered/anonymous user.
   - [ ] Optional — reduce per-record cost: cache user name and action alias per request and refresh them on
     workbench events (authentication, action start/end) instead of resolving them for every record.
     Measure first; only worth it if profiling shows the lookups matter for debug-heavy requests.

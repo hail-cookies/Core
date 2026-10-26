@@ -171,6 +171,7 @@ class MonologCsvFileHandler implements LogHandlerInterface
                     // buffer. Processors on the inner handlers only run when the buffer is flushed, which may be
                     // much later (e.g. after the user or the current action changed). Time-sensitive values
                     // (request ID, user, action) are therefore captured on the FingersCrossedHandler.
+                    // TODO geb 2026-10-26: This means these processors run on ALL logged records above the logging level. If performance becomes an issue, consider caching.
                     $this->pushContextProcessors($fcHandler);
                     // Timing: the context filter must run on the CsvHandler (at flush time), NOT on the
                     // FingersCrossedHandler. The DebugMessageMonologHandler in the same group still needs `sender`
